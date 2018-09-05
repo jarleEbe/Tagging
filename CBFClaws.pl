@@ -7,17 +7,17 @@ my ($basePath, $resultPath) = @ARGV;
 
 open(ERROR, ">>error-claws.txt");
 
-print "Reading list of irregular verbs.\n";
+print "Reading list of irregular verbs from file.\n";
 open(VERBS, "verbs-irregular.txt");
 my @irr_verbs = <VERBS>;
 close(VERBS);
 
-print "Reading list of irregular nouns.\n";
+print "Reading list of irregular nouns from file.\n";
 open(NOUNS, "nouns-irregular.txt");
 my @irr_nouns = <NOUNS>;
 close(NOUNS);
 
-print "Reading lemma list based on TreeTagger.\n";
+print "Reading lemma list based on TreeTagger from file.\n";
 open(TREETAGGER, "treetagger-lemmas.txt");
 my @ttlemmas = <TREETAGGER>;
 close(TREETAGGER);
@@ -51,16 +51,20 @@ foreach (@ttlemmas)
 	$treetagger_lemmas{$key} = "$word\t$pos\t$lemma";
 }
 
-print "Reading lists of non-conformant (contracted) forms, e.g. 'evening / everythin' / seekin'.\n";
+print "Populating lists of non-conformant (contracted) forms, e.g. evenin' / everythin' / seekin'.\n";
 my %RESTing = ();
 &fill_RESTing();
-
 my %Jing = ();
 &fillJing();
+
+print "Populating a list of lemmas where ' (apostrophy) should be converted to \" quotation mark and put on a separat line.";
+my %APOSlist = ();
+&fillAPOSlist();
 
 opendir(DS, $basePath) or die $!;
 my $numFiles = 0;
 my $nooflongwords = 0;
+my $antAPOS = 0;
 while (my $txt = readdir(DS))
 {
 	if ($txt =~ /\.txt\.c7$/i)
@@ -73,27 +77,30 @@ while (my $txt = readdir(DS))
 		my @longwordlist = &get_long_words($basePath, $txt);
 		$nooflongwords = $#longwordlist + 1;
 		my $indexoflongwords = -1;
-
+		my @processedcontent = ();
 		my $outputfile = $txt;
 		$outputfile =~ s/_prepped\.txt\.c7/_cwb\.txt/;
 		open(OUT, ">$resultPath$outputfile");
 		binmode OUT, ":utf8";
 		print "\nFrom CLAWS to CWB $txt\n";
 		my $firstline = 0;
-
+		my $index = -1;
 		foreach my $line (@content)
 		{
 		    chomp($line);
+			$index++;
             if ($line =~ /------------------------/)
             {
                 $firstline++;
                 if ($firstline == 1)
                 {
-                    print OUT "<s>\n";
+#                    print OUT "<s>\n";
+					push(@processedcontent, "<s>");
                 }
                 else
                 {
-                    print OUT "</s>\n<s>\n";
+#                    print OUT "</s>\n<s>\n";
+					push(@processedcontent, "</s>\n<s>");
                 }
             }
             elsif ($line =~ /;START   / || $line =~ /;text     /)
@@ -116,12 +123,14 @@ while (my $txt = readdir(DS))
 					$lword = &convert_to_utf8($lword);
 					my $llemma = lc($lword);
 					my $FUpos = 'FU';
-	        	    print OUT "$lword\t$FUpos\t$llemma\n";
+#	        	    print OUT "$lword\t$FUpos\t$llemma\n";
+					push(@processedcontent, "$lword\t$FUpos\t$llemma");
 	        	    print "Inserting: $lword\t$FUpos\t$llemma\n";
 				}
 				else
 				{
                 	$line =~ s/   ERROR\?    / /;
+					$line =~ s/ > ERROR\?   / /;
                 	$line =~ s/   <   / /;
                 	$line =~ s/   >   / /;
                 	$line =~ s/\s+/ /g;
@@ -143,18 +152,63 @@ while (my $txt = readdir(DS))
                     	$pos =~ s/\%//g;
                     	$pos =~ s/\@//g;
                 	}
-                	my $lemma = 'dummy';               
-					$lemma = &lemmatize($word, $pos);
+                	my $lemma = 'dummy';
+					my $problematic = 0;
+					if ($word =~ "'")
+					{
+						($lemma, $pos, $problematic) = &fixproblematic($word, $pos, $lemma);
+					}
+
+					if ($problematic == 0)
+					{
+						$lemma = &lemmatize($word, $pos);
+					}
 
 			    	$line =~ s/\s+/ /g;
-	        	    print OUT "$word\t$pos\t$lemma\n";
+#	        	    print OUT "$word\t$pos\t$lemma\n";
+					push(@processedcontent, "$word\t$pos\t$lemma");
 				}
             }
 		}
-		print OUT "</s>\n";
+#		print OUT "</s>\n";
+		push(@processedcontent, "</s>");
 		if ($nooflongwords != 0)
 		{
 			print "Something wrong with number of long words\n";
+		}
+		foreach my $c (@processedcontent)
+		{
+			if ($c =~ /\t/)
+			{
+				my ($wf, $wc, $lf) = split/\t/, $c;
+				if (exists($APOSlist{$lf}))
+				{
+					$antAPOS++;
+					my $twc = $APOSlist{$lf};
+
+					my $tlf = $lf;
+					$tlf =~ s/^'//;
+
+					$wf =~ s/^'//;
+
+					my $newline = '"' . "\t" . '"' . "\t" . '"';
+					print OUT "$newline\n";
+					my $fixedline = $wf . "\t" . $twc . "\t" . $tlf;
+					print OUT "$fixedline\n";
+
+#					print "$c\n";
+#					print "$newline\n";	
+#					print "$fixedline\n";
+				}
+				else
+				{
+					print OUT "$c\n";	
+				}
+			}
+			else
+			{
+				print OUT "$c\n";
+			}
 		}
 		close(OUT);
 	}
@@ -162,6 +216,7 @@ while (my $txt = readdir(DS))
 close(DS);
 close(ERROR);
 print "No. files processed: $numFiles\n";
+print "No. of apostrophies changed: $antAPOS\n";
 if ($nooflongwords != 0)
 {
 	print "Something wrong with number long words\n";
@@ -263,6 +318,310 @@ sub convert_to_utf8
 
 }
 
+sub fixproblematic
+{
+	my ($w, $p, $lemma) = @_;
+
+	my $problem_fixed = 0;
+	my $llemma = '';
+
+	if (($w eq "O'" || $w eq "o'") && ($p eq "IO" || $p eq "RR21") )
+	{
+		$llemma = "of";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "D'" || $w eq "d'") && ($p =~ /^VD/) )
+	{
+		$llemma = "do";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'E" || $w eq "'e") && ($p eq "PPHS1") )
+	{
+		$llemma = "he";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'IM" || $w eq "'im" || $w eq "'Im") && ($p eq "PPHO1") )
+	{
+		$llemma = "him";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'ER" || $w eq "'Er" || $w eq "'er") && ($p eq "PPHO1" || $p eq "APPGE") )
+	{
+		$llemma = "her";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'T" || $w eq "'t") && ($p eq "PPH1") )
+	{
+		$llemma = "it";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "WI'" || $w eq "wi'" || $w eq "Wi'") && ($p eq "IW") )
+	{
+		$llemma = "with";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'AVE" || $w eq "'Ave" || $w eq "'ave") && ($p eq "VH0" || $p eq "VHI" ) )
+	{
+		$llemma = "have";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "No'" || $w eq "no'") && ($p eq "JJ" || $p eq "VVI" || $p eq "NN1") )
+	{
+		$llemma = "not";
+		$p = "XX";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'Ere" || $w eq "'ERE" || $w eq "'ere") && ($p eq "RL") )
+	{
+		$llemma = "here";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'IS" || $w eq "'Is" || $w eq "'is") && ($p eq "APPGE") )
+	{
+		$llemma = "his";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "a'") && ($p eq "JJ" || $p eq "NN1" ) )
+	{
+		$llemma = "all";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "a'") && ($p eq "VV0" || $p eq "VVI" ) )
+	{
+		$llemma = "have";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "ha'" || $w eq "Ha'" || $w eq "'av") && ($p eq "VV0" || $p eq "VVI" ) )
+	{
+		$llemma = "have";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "ha'") && ($p eq "NN1" ) )
+	{
+		$llemma = "have";
+		$p = "VV0";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "th'" || $w eq "t'" || $w eq "T'") && ($p eq "AT" ) )
+	{
+		$llemma = "the";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'ee" || $w eq "y'"  || $w eq "Y'") && ($p eq "PPY" ) )
+	{
+		$llemma = "you";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'Ow" || $w eq "'ow") && ($p eq "RRQ" || $p eq "RGQ" ) )
+	{
+		$llemma = "how";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "Sha'" || $w eq "sha'") && ($p eq "VV0" || $p eq "VM" ) )
+	{
+		$llemma = "shall";
+		$p = "VM";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'UN" || $w eq "'Un" || $w eq "'un") && ($p eq "PN1" ) )
+	{
+		$llemma = "one";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'bus") && ($p eq "NN1" ) )
+	{
+		$llemma = "bus";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "I'" || $w eq "i'") && ($p eq "VV0" || $p eq "JJ" || $p eq "NN1" ) )
+	{
+		$llemma = "in";
+		$p = "II";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "Don'" || $w eq "don'") && ($p eq "VV0" || $p eq "JJ" || $p eq "NN1" ) )
+	{
+		$llemma = "do";
+		$p = "VD0";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "Tak'" || $w eq "tak'") && ($p eq "VVI" || $p eq "VV0" || $p eq "JJ" || $p eq "NN1" ) )
+	{
+		$llemma = "take";
+		$p = "VVI";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'phone") && ($p eq "NN1" ) )
+	{
+		$llemma = "phone";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'phoned") && ($p eq "VVD" || $p eq "VVN") )
+	{
+		$llemma = "phone";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'bus-conductor") && ($p eq "NN1" ) )
+	{
+		$llemma = "bus-conductor";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'Pon" || $w eq "'pon") && ($p eq "NN1") )
+	{
+		$llemma = "upon";
+		$p = "II";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "No'" || $w eq "no'") && ($p eq "VVI" || $p eq "VV0" || $p eq "JJ") )
+	{
+		$llemma = "not";
+		$p = "XX";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'Bout" || $w eq "'bout") && ($p eq "II" || $p eq "RG") )
+	{
+		$llemma = "about";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "Awa'" || $w eq "awa'") && ($p eq "RP") )
+	{
+		$llemma = "away";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "mak'") && ($p eq "VV0" || $p eq "VVI") )
+	{
+		$llemma = "make";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "mak'") && ($p eq "NN1") )
+	{
+		$llemma = "make";
+		$p = "VV0";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'Arf" || $w eq "'arf") && ($p eq "NN1" || $p eq "VV0") )
+	{
+		$llemma = "half";
+		$p = "NN1";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "fra'") && ($p eq "NN1" || $p eq "VV0" || $p eq "JJ") )
+	{
+		$llemma = "from";
+		$p = "II";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'Tis" || $w eq "'tis"|| $w eq "'Tes" || $w eq "'tes") && ($p eq "NN1" || $ p eq "NN2") )
+	{
+		$llemma = "'tis";
+		$p = "FU";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "Ver'" || $w eq "ver'") && ($p eq "NN1" || $p eq "VV0" || $p eq "JJ") )
+	{
+		$llemma = "very";
+		$p = "RG";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "Cam'" || $w eq "cam'") && ($p eq "NN1" || $p eq "VV0" || $p eq "JJ") )
+	{
+		$llemma = "come";
+		$p = "VV0";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "kep'" || $w eq "Kep'") && ($p eq "NN1" || $p eq "VV0" || $p eq "JJ") )
+	{
+		$llemma = "keep";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "Wiv'" || $w eq "wiv'") && ($p eq "NN1" || $p eq "VV0" || $p eq "JJ") )
+	{
+		$llemma = "with";
+		$p = "IW";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'Fraid" || $w eq "'fraid") && ($p eq "VVD" || $p eq "VVN") )
+	{
+		$llemma = "afraid";
+		$p = "JJ";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'orspital") && ($p eq "JJ") )
+	{
+		$llemma = "hospital";
+		$p = "NN1";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "Yo'" || $w eq "yo'") && ($p eq "NNU" || $p eq "NP1") )
+	{
+		$llemma = "you";
+		$p = "PPY";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "Ca'" || $w eq "ca'") && ($p eq "VVI" || $p eq "VV0") )
+	{
+		$llemma = "call";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'N" || $w eq "'n") && ($p eq "CC") )
+	{
+		$llemma = "and";
+		$problem_fixed = 1;
+	}
+
+	if (($w eq "'Old" || $w eq "'old") && ($p eq "VVI" || $p eq "VV0" || $p eq "NN1") )
+	{
+		$llemma = "hold";
+		$p = "VV0";
+		$problem_fixed = 1;
+	}
+
+	return $llemma, $p, $problem_fixed;
+}
 # http://ucrel.lancs.ac.uk/claws7tags.html / http://www.scientificpsychic.com/grammar/regular.html
 
 sub lemmatize
@@ -297,7 +656,23 @@ sub lemmatize
 		$lemma = 'be';
 	}
 
-    if ($p =~ /^V/)
+	if ($w eq "ca" && $p eq "VM")
+	{
+		$stillnotfound++;
+		$lemma = 'can';
+	}
+
+	elsif ($w eq "'ll" && $p eq "VM")
+	{
+		$stillnotfound++;
+		$lemma = 'will';
+	}
+	elsif (($w eq "'d" || $w eq "'ud") && $p eq "VM")
+	{
+		$stillnotfound++;
+		$lemma = 'would';
+	}
+    elsif ($p =~ /^V/)
     {
 		my $key = $w . "\t" . 'V';
 
@@ -413,7 +788,7 @@ sub lemmatize
 
 #   $lemma = lc($lemma);
 #	$lemma = &double_check($lemma);
-	if (($lemma =~ /'/) && ($lemma ne "'s" || $lemma ne "'ll" || $lemma ne "'d" || $lemma ne "'ve" || $lemma ne "'m" || $lemma ne "'re"))
+	if ($lemma =~ /'/ && $lemma ne "'s" && $lemma ne "'ll" && $lemma ne "'d" && $lemma ne "'ve" && $lemma ne "'m" && $lemma ne "'re" && $lemma ne "n't" && $lemma ne "o'clock" && $lemma ne "'")
 	{
 		if ($p =~ /^JJ/)
 		{
@@ -441,9 +816,105 @@ sub fill_RESTing()
 {
 	%RESTing = (
 		"'aving" => "have",
-		"'earty" => "hearty",
+		"damn'" => "damn",
+		"dam'" => "damn",
 		"'em" => "them",
+		"'flu" => "flu",
+		"worl'" => "world",
+		"tho'" => "though",
 		"'usband" => "husband",
+		"'ooman" => "woman",
+		"ceilin'" => "ceiling",
+		"'andle" => "handle",
+		"'ome" => "home",
+		"'ouse" => "house",
+		"'ead" => "head",
+		"'ear" => "hear",
+		"'elp" => "help",
+		"'eard" => "hear",
+		"'appened" => "happen",
+		"'fore" => "before",
+		"'alf" => "half",
+		"'ands" => "hand",
+		"'oo" => "who",
+		"'imself" => "himself",
+		"'isself" => "himself",
+		"mysel'" => "myself",
+		"yoursel'" => "yourself",
+		"'undred" => "hundred",
+		"poun'" => "pound",
+		"'orse" => "horse",
+		"'uns" => "ones",
+		"'cause" => "because",
+		"'eart" => "heart",
+		"'ardly" => "hardly",
+		"'appen" => "happen",
+		"'ell" => "hell",
+		"'orses" => "horse",
+		"'arm" => "harm",
+		"'ole" => "hole",
+		"'urry" => "hurry",
+		"'art" => "heart",
+		"'ullo" => "hullo",
+		"'air" => "hair",
+		"'ed" => "head",
+		"'erself" => "herself",
+		"'osses" => "horse",
+		"'ealth" => "health",
+		"himsel'" => "himself",
+		"'appens" => "happen",
+		"'cept" => "except",
+		"'elped" => "help",
+		"'ouses" => "house",
+		"'ospital" => "hospital",
+		"'scuse" => "excuse",
+		"'ang" => "hand",
+		"'eads" => "head",
+		"'ats" => "hat",
+		"'ard" => "hard",
+		"owin'" => "owe",
+		"'oman" => "woman",
+		"'opes" => "hope",
+		"'ope" => "hope",
+		"'oss" => "horse",
+		"'spect" => "expect",
+		"'emselves" => "themselves",
+		"hersel'" => "herself",
+		"'ung" => "hang",
+		"'appiness" => "happiness",
+		"'azel" => "hazel",
+		"'eaven" => "heaven",
+		"'ello" => "hello",
+		"'ighly" => "highly",
+		"'spose" => "suppose",
+		"'uman" => "human",
+		"'eavens" => "heaven",
+		"'iding" => "hide",
+		"'oliday" => "holiday",
+		"actin'" => "act",
+		"'ammer" => "hammer",
+		"'appening" => "happen",
+		"durin'" => "during",
+		"'ook" => "hook",
+		"'opped" => "hop",
+		"'usbands" => "husband",
+		"yersel'" => "yourself",
+		"'ates" => "hate",
+		"'ate" => "hate",
+		"com'" => "come",
+		"'ank" => "hank",
+		"'ears" => "hear",
+		"'urt" => "hurt",
+		"considerin'" => "consider",
+		"'earty" => "hearty",
+		"'enderson" => "henderson",
+		"frien'" => "friend",
+		"hav'" => "have",
+		"'ired" => "hire",
+		"'oles" => "hole",
+		"'orspital" => "hospital",
+		"'tice" => "entice",
+		"'wot" => "what",
 		"accordin'" => "accord",
 		"amazin'" => "amaze",
 		"an'" => "and",
@@ -510,7 +981,6 @@ sub fill_RESTing()
 		"holdin'" => "hold",
 		"hopin'" => "hope",
 		"huntin'" => "hunt",
-		"interestin'" => "interesting",
 		"interferin'" => "interfer",
 		"keepin'" => "keep",
 		"kickin'" => "kick",
@@ -533,10 +1003,13 @@ sub fill_RESTing()
 		"meetin'" => "meet",
 		"missin'" => "miss",
 		"mornin'" => "morning",
+		"marnin'" => "morning",
 		"movin'" => "move",
 		"muckin'" => "muck",
 		"nothin'" => "nothing",
+		"nuthin'" => "nothing",
 		"nuffin'" => "nothing",
+		"nuttin'" => "nothing",
 		"openin'" => "open",
 		"packin'" => "pack",
 		"passin'" => "pass",
@@ -600,6 +1073,104 @@ sub fill_RESTing()
 		"wishin'" => "wish",
 		"wonderin'" => "wonder",
 		"worryin'" => "worry",
+		"wouldna" => "would",
+		"lookin'" => "look",
+		"takin'" => "take",
+		"workin'" => "work",
+		"standin'" => "stand",
+		"walkin'" => "walk",
+		"leadin'" => "lead",
+		"breakin'" => "break",
+		"charmin'" => "charm",
+		"guessin'" => "guess",
+		"perishin'" => "perish",
+		"sailin'" => "sail",
+		"savin'" => "save",
+		"boxin'" => "box",
+		"exceptin'" => "except",
+		"buyin'" => "buy",
+		"courtin'" => "court",
+		"gamblin'" => "gamble",
+		"pickin'" => "pick",
+		"plannin'" => "plan",
+		"countin'" => "count",
+		"drawin'" => "draw",
+		"happenin'" => "happen",
+		"learnin'" => "learn",
+		"likin'" => "like",
+		"rippin'" => "rip",
+		"throwin'" => "throw",
+		"washin'" => "wash",
+		"complainin'" => "complain",
+		"greetin'" => "greet",
+		"gumshoein'" => "gumshoe",
+		"jumpin'" => "jump",
+		"messin'" => "mess",
+		"rushin'" => "rush",
+		"speirin'" => "speir",
+		"touchin'" => "touch",
+		"bangin'" => "bang",
+		"bumpin'" => "bump",
+		"buryin'" => "bury",
+		"chasin'" => "chase",
+		"crackin'" => "crack",
+		"cussin'" => "cuss",
+		"disgustin'" => "disgust",
+		"distressin'" => "distress",
+		"fechtin'" => "fetch",
+		"followin'" => "follow",
+		"handin'" => "hand",
+		"hollerin'" => "holler",
+		"janglin'" => "jangle",
+		"kiddin'" => "kid",
+		"kidnappin'" => "kidnap",
+		"landin'" => "land",
+		"leanin'" => "lean",
+		"rememberin'" => "remember",
+		"servin'" => "serve",
+		"settlin'" => "settle",
+		"shakin'" => "shake",
+		"snorin'" => "snore",
+		"spyin'" => "spy",
+		"squealin'" => "squeal",
+		"stealin'" => "steal",
+		"allowin'" => "allow",
+		"bashin'" => "bash",
+		"beatin'" => "beat",
+		"chuckin'" => "chuck",
+		"cleanin'" => "clean",
+		"clearin'" => "clear",
+		"comfortin'" => "comfort",
+		"considerin'" => "consider",
+		"drippin'" => "drip",
+		"droppin'" => "drop",
+		"enjoyin'" => "enjoy",
+		"figurin'" => "figure",
+		"freezin'" => "freeze",
+		"frontin'" => "front",
+		"improvin'" => "improve",
+		"investigatin'" => "investigate",
+		"lightin'" => "light",
+		"lovin'" => "love",
+		"murderin'" => "murder",
+		"needin'" => "need",
+		"operatin'" => "operate",
+		"preachin'" => "preach",
+		"providin'" => "provide",
+		"pushin'" => "push",
+		"raisin'" => "raise",
+		"reportin'" => "report",
+		"risin'" => "rise",
+		"rovin'" => "rove",
+		"shavin'" => "shave",
+		"shoppin'" => "shop",
+		"sinkin'" => "sink",
+		"stinkin'" => "stink",
+		"studyin'" => "study",
+		"swimmin'" => "swim",
+		"rovin'" => "rove",
+		"poppin'" => "pop",
+		"wan'" => "want",
 		"writin'" => "write");
 
 }
@@ -609,6 +1180,29 @@ sub fillJing()
 
     %Jing = (
 		"amazin'" => "amazing",
+		"goo'" => "good",
+		"sma'" => "small",
+		"damn'" => "damned",
+		"dam'" => "damned",
+		"awfu'" => "awful",
+		"'ot" => "hot",
+		"'appy" => "happy",
+		"'earty" => "hearty",
+		"'oly" => "holy",
+		"'ealthy" => "healthy",
+		"'eavy" => "heavy",
+		"'andy" => "handy",
+		"'ard" => "hard",
+		"'urt" => "hurt",
+		"ol'" => "old",
+		"'ot" => "hot",
+		"'fraid" => "afraid",
+		"awfu'" => "awful",
+		"'normous" => "enormous",
+		"awfull'" => "awful",
+		"'orrible" => "horrible",
+		"nex'" => "next",		
+		"charmin'" => "charming",
 		"arguin'" => "arguing",
 		"askin'" => "asking",
 		"beggin'" => "begging",
@@ -726,7 +1320,70 @@ sub fillJing()
 		"wishin'" => "wishing",
 		"wonderin'" => "wondering",
 		"worryin'" => "worrying",
+		"workin'" => "working",
+		"interestin'" => "interesting",
+		"leadin'" => "leading",
+		"good-lookin'" => "good-looking",
+		"gamblin'" => "gamling",
+		"disgustin'" => "disgusting",
+		"distressin'" => "distressing",
+		"lovin'" => "loving",
+		"murderin'" => "murdering",
+		"sinkin'" => "sinking",
+		"stinkin'" => "stinking",
+		"lightin'" => "lighting",
+		"lookin'" => "looking",
+		"shavin'" => "shaving",
+		"shoppin'" => "shopping",
+		"perishin'" => "perishing",
+		"risin'" => "rising",
+		"amusin'" => "amusing",
+		"'andsome" => "handsome",
+		"'appier" => "happy",
 		"writin'" => "writing");
+}
+
+sub fillAPOSlist()
+{
+
+    %APOSlist = (
+		"'the" => "AT",
+		"'a" => "AT1",
+		"'and" => "CC",
+		"'but" => "CCB",
+		"'it" => "PPH1",
+		"'you" => "PPY",
+		"'i" => "PPIS1",
+		"'yes" => "UH",
+		"'oh" => "UH",
+		"'this" => "DD1",
+		"'what" => "DDQ",
+		"'my" => "APPGE",
+		"'your" => "APPGE",
+		"'do" => "VD0",
+		"'that" => "DD1",
+		"'at" => "II",
+		"'in" => "II",
+		"'he" => "PPHS1",
+		"'she" => "PPHS1",
+		"'we" => "PPHS2",
+		"'they" => "PPHS2",
+		"'if" => "CS",
+		"'all" => "DB",
+		"'good" => "JJ",
+		"'well" => "UH",
+		"'to" => "TO",
+		"'not" => "XX",
+		"'there" => "EX",
+		"'why" => "RRQ",
+		"'how" => "RRQ",
+		"'look" => "VV0",
+		"'mr" => "NNB",
+		"'mrs" => "NNB",
+		"'miss" => "NNB",
+		"'of" => "RR21",
+		"'an" => "AT1",
+		"'no" => "AT");
 }
 
 sub get_long_words
@@ -761,6 +1418,7 @@ sub get_long_words
 				{
 					chomp($supper);
 
+#Brackets cause problems
 					if ($supper =~ /\(/ || $supper =~ /\)/ )
 					{
 						print "$supper\n";
@@ -774,7 +1432,7 @@ sub get_long_words
 						$temp =~ s/\(//g;
 					}
 
-					if ($supper =~ /$temp/)
+					if ($supper =~ /$temp/i)
 					{
 						$found++;
 					}

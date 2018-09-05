@@ -185,12 +185,20 @@ sub insertQM
 
 
 	$thetext =~ s/^'/"/;
-	$thetext =~ s/(\.|\?|\!) '/$1 "/g;
+	
+	$thetext =~ s/(\.|\?|\!) '/$1"/g;
 	$thetext =~ s/(\.|\?|\!)'/$1"/g;
+
+	$thetext =~ s/'(\.|\?|\!)/"$1/g;
+	$thetext =~ s/' (\.|\?|\!)/"$1/g;
+
 	$thetext =~ s/(\,|\;|\:)'/$1"/g;
-	$thetext =~ s/(\,|\;|\:|\() '/$1 "/g;
+
+	$thetext =~ s/(\,|\;|\:|\() '/$1"/g;
 	$thetext =~ s/'(\,|\;|\:|\))/"$1/g;
+
 	$thetext =~ s/&mdash; '/&mdash; "/g;
+	$thetext =~ s/' &mdash; /" &mdash; /g;
 	$thetext =~ s/ '([A-Za-z0-9 ]+?)' / "$1" /g;
 
     return $thetext;
