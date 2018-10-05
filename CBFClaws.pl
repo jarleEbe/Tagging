@@ -57,9 +57,13 @@ my %RESTing = ();
 my %Jing = ();
 &fillJing();
 
-print "Populating a list of lemmas where ' (apostrophy) should be converted to \" quotation mark and put on a separat line.";
+print "Populating a list of lemmas where ' (apostrophy) should be converted to \" quotation mark and put on a separat line. Will also insert new/different POS.\n";
 my %APOSlist = ();
 &fillAPOSlist();
+
+print "Populating a list of lemmas where ' (apostrophy) should be converted to \" quotation mark and put on a separat line. Will *not* change POS.\n";
+my %secondAPOSlist = ();
+&fillsecondAPOSlist();
 
 opendir(DS, $basePath) or die $!;
 my $numFiles = 0;
@@ -133,6 +137,7 @@ while (my $txt = readdir(DS))
 					$line =~ s/ > ERROR\?   / /;
                 	$line =~ s/   <   / /;
                 	$line =~ s/   >   / /;
+                	$line =~ s/   =   / /;
                 	$line =~ s/\s+/ /g;
 			    	$line =~ s/&dollar;/\$/g;
 			    	$line =~ s/&pound;/\£/g;
@@ -199,6 +204,14 @@ while (my $txt = readdir(DS))
 #					print "$c\n";
 #					print "$newline\n";	
 #					print "$fixedline\n";
+				}
+				elsif ($wf =~ /^'/ && $lf !~ /^'/ && (exists($secondAPOSlist{$lf})))
+				{
+					my $newline = '"' . "\t" . '"' . "\t" . '"';
+					print OUT "$newline\n";
+					$wf =~ s/^'//;
+					my $fixedline = $wf . "\t" . $wc . "\t" . $lf;
+					print OUT "$fixedline\n";
 				}
 				else
 				{
@@ -330,32 +343,27 @@ sub fixproblematic
 		$llemma = "of";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "D'" || $w eq "d'") && ($p =~ /^VD/) )
+	elsif (($w eq "D'" || $w eq "d'") && ($p =~ /^VD/) )
 	{
 		$llemma = "do";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'E" || $w eq "'e") && ($p eq "PPHS1") )
+	elsif (($w eq "'E" || $w eq "'e") && ($p eq "PPHS1") )
 	{
 		$llemma = "he";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'IM" || $w eq "'im" || $w eq "'Im") && ($p eq "PPHO1") )
+	elsif (($w eq "'IM" || $w eq "'im" || $w eq "'Im") && ($p eq "PPHO1") )
 	{
 		$llemma = "him";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'ER" || $w eq "'Er" || $w eq "'er") && ($p eq "PPHO1" || $p eq "APPGE") )
+	elsif (($w eq "'ER" || $w eq "'Er" || $w eq "'er") && ($p eq "PPHO1" || $p eq "APPGE") )
 	{
 		$llemma = "her";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'T" || $w eq "'t") && ($p eq "PPH1") )
+	elsif (($w eq "'T" || $w eq "'t") && ($p eq "PPH1") )
 	{
 		$llemma = "it";
 		$problem_fixed = 1;
@@ -366,257 +374,559 @@ sub fixproblematic
 		$llemma = "with";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'AVE" || $w eq "'Ave" || $w eq "'ave") && ($p eq "VH0" || $p eq "VHI" ) )
+	elsif (($w eq "'AVE" || $w eq "'Ave" || $w eq "'ave") && ($p eq "VH0" || $p eq "VHI" ) )
 	{
 		$llemma = "have";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "No'" || $w eq "no'") && ($p eq "JJ" || $p eq "VVI" || $p eq "NN1") )
+	elsif (($w eq "No'" || $w eq "no'") && ($p eq "JJ" || $p eq "VVI" || $p eq "NN1") )
 	{
 		$llemma = "not";
 		$p = "XX";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'Ere" || $w eq "'ERE" || $w eq "'ere") && ($p eq "RL") )
+	elsif (($w eq "'Ere" || $w eq "'ERE" || $w eq "'ere") && ($p eq "RL") )
 	{
 		$llemma = "here";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'IS" || $w eq "'Is" || $w eq "'is") && ($p eq "APPGE") )
+	elsif (($w eq "'IS" || $w eq "'Is" || $w eq "'is") && ($p eq "APPGE") )
 	{
 		$llemma = "his";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "a'") && ($p eq "JJ" || $p eq "NN1" ) )
+	elsif (($w eq "A'") && ($p eq "VV0"|| $p eq "JJ"|| $p eq "NN1" ) )
+	{
+		$llemma = "all";
+		$p = "DB";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "a'") && ($p eq "JJ" || $p eq "NN1" ) )
 	{
 		$llemma = "all";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "a'") && ($p eq "VV0" || $p eq "VVI" ) )
+	elsif (($w eq "a'") && ($p eq "VV0" || $p eq "VVI" ) )
 	{
 		$llemma = "have";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "ha'" || $w eq "Ha'" || $w eq "'av") && ($p eq "VV0" || $p eq "VVI" ) )
+	elsif (($w eq "ha'" || $w eq "Ha'" || $w eq "'av") && ($p eq "VV0" || $p eq "VVI" ) )
 	{
 		$llemma = "have";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "ha'") && ($p eq "NN1" ) )
+	elsif (($w eq "ha'"|| $w eq "Ha'") && ($p eq "NN1" || $p eq "NP1") )
 	{
 		$llemma = "have";
 		$p = "VV0";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "th'" || $w eq "t'" || $w eq "T'") && ($p eq "AT" ) )
+	elsif (($w eq "Th'" || $w eq "th'" || $w eq "t'" || $w eq "T'") && ($p eq "AT" ) )
 	{
 		$llemma = "the";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'ee" || $w eq "y'"  || $w eq "Y'") && ($p eq "PPY" ) )
+	elsif (($w eq "'Ee" || $w eq "'ee" || $w eq "y'"  || $w eq "Y'") && ($p eq "PPY" ) )
 	{
 		$llemma = "you";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'Ow" || $w eq "'ow") && ($p eq "RRQ" || $p eq "RGQ" ) )
+	elsif (($w eq "'Ow" || $w eq "'ow") && ($p eq "RRQ" || $p eq "RGQ" ) )
 	{
 		$llemma = "how";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "Sha'" || $w eq "sha'") && ($p eq "VV0" || $p eq "VM" ) )
+	elsif (($w eq "Sha'" || $w eq "sha'") && ($p eq "VV0" || $p eq "VM" ) )
 	{
 		$llemma = "shall";
 		$p = "VM";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'UN" || $w eq "'Un" || $w eq "'un") && ($p eq "PN1" ) )
+	elsif (($w eq "'UN" || $w eq "'Un" || $w eq "'un") && ($p eq "PN1" ) )
 	{
 		$llemma = "one";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'bus") && ($p eq "NN1" ) )
+	elsif (($w eq "'bus") && ($p eq "NN1" ) )
 	{
 		$llemma = "bus";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "I'" || $w eq "i'") && ($p eq "VV0" || $p eq "JJ" || $p eq "NN1" ) )
+	elsif (($w eq "I'" || $w eq "i'") && ($p eq "VV0" || $p eq "JJ" || $p eq "NN1" ) )
 	{
 		$llemma = "in";
 		$p = "II";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "Don'" || $w eq "don'") && ($p eq "VV0" || $p eq "JJ" || $p eq "NN1" ) )
+	elsif (($w eq "Don'" || $w eq "don'") && ($p eq "VV0" || $p eq "JJ" || $p eq "NN1" ) )
 	{
 		$llemma = "do";
 		$p = "VD0";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "Tak'" || $w eq "tak'") && ($p eq "VVI" || $p eq "VV0" || $p eq "JJ" || $p eq "NN1" ) )
+	elsif (($w eq "Tak'" || $w eq "tak'") && ($p eq "VVI" || $p eq "VV0" || $p eq "JJ" || $p eq "NN1" ) )
 	{
 		$llemma = "take";
 		$p = "VVI";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'phone") && ($p eq "NN1" ) )
+	elsif (($w eq "'phone") && ($p eq "NN1" ) )
 	{
 		$llemma = "phone";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'phoned") && ($p eq "VVD" || $p eq "VVN") )
+	elsif (($w eq "'phoned") && ($p eq "VVD" || $p eq "VVN") )
 	{
 		$llemma = "phone";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'bus-conductor") && ($p eq "NN1" ) )
+	elsif (($w eq "'bus-conductor") && ($p eq "NN1" ) )
 	{
 		$llemma = "bus-conductor";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'Pon" || $w eq "'pon") && ($p eq "NN1") )
+	elsif (($w eq "'Pon" || $w eq "'pon") && ($p eq "NN1") )
 	{
 		$llemma = "upon";
 		$p = "II";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "No'" || $w eq "no'") && ($p eq "VVI" || $p eq "VV0" || $p eq "JJ") )
+	elsif (($w eq "No'" || $w eq "no'") && ($p eq "VVI" || $p eq "VV0" || $p eq "JJ") )
 	{
 		$llemma = "not";
 		$p = "XX";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'Bout" || $w eq "'bout") && ($p eq "II" || $p eq "RG") )
+	elsif (($w eq "'Bout" || $w eq "'bout") && ($p eq "II" || $p eq "RG") )
 	{
 		$llemma = "about";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "Awa'" || $w eq "awa'") && ($p eq "RP") )
+	elsif (($w eq "Awa'" || $w eq "awa'") && ($p eq "RP") )
 	{
 		$llemma = "away";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "mak'") && ($p eq "VV0" || $p eq "VVI") )
+	elsif (($w eq "mak'") && ($p eq "VV0" || $p eq "VVI") )
 	{
 		$llemma = "make";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "mak'") && ($p eq "NN1") )
+	elsif (($w eq "mak'") && ($p eq "NN1") )
 	{
 		$llemma = "make";
 		$p = "VV0";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'Arf" || $w eq "'arf") && ($p eq "NN1" || $p eq "VV0") )
+	elsif (($w eq "'Arf" || $w eq "'arf") && ($p eq "NN1" || $p eq "VV0") )
 	{
 		$llemma = "half";
 		$p = "NN1";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "fra'") && ($p eq "NN1" || $p eq "VV0" || $p eq "JJ") )
+	elsif (($w eq "fra'") && ($p eq "NN1" || $p eq "VV0" || $p eq "JJ") )
 	{
 		$llemma = "from";
 		$p = "II";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'Tis" || $w eq "'tis"|| $w eq "'Tes" || $w eq "'tes") && ($p eq "NN1" || $ p eq "NN2") )
+	elsif (($w eq "'Tis" || $w eq "'tis"|| $w eq "'Tes" || $w eq "'tes") && ($p eq "NN1" || $ p eq "NN2") )
 	{
 		$llemma = "'tis";
 		$p = "FU";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "Ver'" || $w eq "ver'") && ($p eq "NN1" || $p eq "VV0" || $p eq "JJ") )
+	elsif (($w eq "Ver'" || $w eq "ver'") && ($p eq "NN1" || $p eq "VV0" || $p eq "JJ") )
 	{
 		$llemma = "very";
 		$p = "RG";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "Cam'" || $w eq "cam'") && ($p eq "NN1" || $p eq "VV0" || $p eq "JJ") )
+	elsif (($w eq "Cam'" || $w eq "cam'") && ($p eq "NN1" || $p eq "VV0" || $p eq "JJ") )
 	{
 		$llemma = "come";
 		$p = "VV0";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "kep'" || $w eq "Kep'") && ($p eq "NN1" || $p eq "VV0" || $p eq "JJ") )
+	elsif (($w eq "kep'" || $w eq "Kep'") && ($p eq "NN1" || $p eq "VV0" || $p eq "JJ") )
 	{
 		$llemma = "keep";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "Wiv'" || $w eq "wiv'") && ($p eq "NN1" || $p eq "VV0" || $p eq "JJ") )
+	elsif (($w eq "Wiv'" || $w eq "wiv'") && ($p eq "NN1" || $p eq "VV0" || $p eq "JJ") )
 	{
 		$llemma = "with";
 		$p = "IW";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'Fraid" || $w eq "'fraid") && ($p eq "VVD" || $p eq "VVN") )
+	elsif (($w eq "'Fraid" || $w eq "'fraid") && ($p eq "VVD" || $p eq "VVN") )
 	{
 		$llemma = "afraid";
 		$p = "JJ";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'orspital") && ($p eq "JJ") )
+	elsif (($w eq "'orspital") && ($p eq "JJ") )
 	{
 		$llemma = "hospital";
 		$p = "NN1";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "Yo'" || $w eq "yo'") && ($p eq "NNU" || $p eq "NP1") )
+	elsif (($w eq "Yo'" || $w eq "yo'") && ($p eq "NNU" || $p eq "NP1") )
 	{
 		$llemma = "you";
 		$p = "PPY";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "Ca'" || $w eq "ca'") && ($p eq "VVI" || $p eq "VV0") )
+	elsif (($w eq "Ca'" || $w eq "ca'") && ($p eq "VVI" || $p eq "VV0") )
 	{
 		$llemma = "call";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'N" || $w eq "'n") && ($p eq "CC") )
+	elsif (($w eq "'N" || $w eq "'n") && ($p eq "CC") )
 	{
 		$llemma = "and";
 		$problem_fixed = 1;
 	}
-
-	if (($w eq "'Old" || $w eq "'old") && ($p eq "VVI" || $p eq "VV0" || $p eq "NN1") )
+	elsif (($w eq "'Old" || $w eq "'old") && ($p eq "VVI" || $p eq "VV0" || $p eq "NN1") )
 	{
 		$llemma = "hold";
 		$p = "VV0";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'M" || $w eq "'m") && ($p eq "APPGE" || $p eq "JJ" || $p eq "VV0" ||  $p eq "NP1") )
+	{
+		$llemma = "my";
+		$p = "APPGE";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'One" || $w eq "'one") && ($p eq "NN1" || $p eq "VV0" ) )
+	{
+		$llemma = "one";
+		$p = "MC1";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Come" || $w eq "'come") && ($p eq "NN1") )
+	{
+		$llemma = "come";
+		$p = "VV0";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'SIR" || $w eq "'Sir" || $w eq "'sir") && ($p eq "NN1") )
+	{
+		$llemma = "sir";
+		$p = "NNB";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Thank" || $w eq "'thank") && ($p eq "NN1" || $p eq "VV0" ) )
+	{
+		$llemma = "thank";
+		$p = "VV0";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'DEAR" || $w eq "'Dear" || $w eq "'dear") && ($p eq "NN1" || $p eq "VV0" || $p eq "NP1") )
+	{
+		$llemma = "dear";
+		$p = "NN1";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Go" || $w eq "'go") && ($p eq "NN1") )
+	{
+		$llemma = "go";
+		$p = "VV0";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Now" || $w eq "'now") && ($p eq "NN1" || $p eq "VV0" ) )
+	{
+		$llemma = "now";
+		$p = "RT";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'So" || $w eq "'so") && ($p eq "NN1" ) )
+	{
+		$llemma = "so";
+		$p = "RG";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'WHO" || $w eq "'Who" || $w eq "'who") && ($p eq "NN1") )
+	{
+		$llemma = "who";
+		$p = "PNQS";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Here" || $w eq "'here") && ($p eq "NN1" || $p eq "JJ" ) )
+	{
+		$llemma = "here";
+		$p = "RL";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "IT'" || $w eq "It'" || $w eq "it'") && ($p eq "NN1" || $p eq "NP1" || $p eq "JJ" || $p eq "VV0" ) )
+	{
+		$llemma = "it";
+		$p = "PPH1";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Just" || $w eq "'just") && ($p eq "RR") )
+	{
+		$llemma = "just";
+		$p = "RR";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Let" || $w eq "'let") && ($p eq "NN1") )
+	{
+		$llemma = "let";
+		$p = "VV0";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Little" || $w eq "'little") && ($p eq "NN1") )
+	{
+		$llemma = "little";
+		$p = "DA1";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'On" || $w eq "'on") && ($p eq "JJ") )
+	{
+		$llemma = "on";
+		$p = "II";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Where" || $w eq "'where") && ($p eq "RR") )
+	{
+		$llemma = "where";
+		$p = "RRQ";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Very" || $w eq "'very") && ($p eq "JJ") )
+	{
+		$llemma = "where";
+		$p = "RG";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Poor" || $w eq "'poor") && ($p eq "NN1") )
+	{
+		$llemma = "poor";
+		$p = "JJ";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Ah") && ($p eq "UH") )
+	{
+		$llemma = "ah";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'God") && ($p eq "NN1") )
+	{
+		$llemma = "god";
+		$p = 'NP1';
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'When" || $w eq "'when") && ($p eq "NN1" || $p eq "JJ" ) )
+	{
+		$llemma = "when";
+		$p = "RRQ";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'With" || $w eq "'with") && ($p eq "NN1") )
+	{
+		$llemma = "with";
+		$p = "IW";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'tween") && ($p eq "NN1" || $p eq "JJ" ) )
+	{
+		$llemma = "between";
+		$p = "II";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Are" || $w eq "'are") && ($p eq "NN1" || $p eq "VV0" ) )
+	{
+		$llemma = "be";
+		$p = "VBR";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Get" || $w eq "'get") && ($p eq "NN1" || $p eq "VVI"|| $p eq "VV0" ) )
+	{
+		$llemma = "get";
+		$p = "VV0";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Please" || $w eq "'please") && ($p eq "NN1" || $p eq "VV0" ) )
+	{
+		$llemma = "please";
+		$p = "RR";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Then" || $w eq "'then") && ($p eq "NN1" ) )
+	{
+		$llemma = "then";
+		$p = "RT";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "wa'") && ($p eq "NN1" || $p eq "VV0" || $p eq "JJ") )
+	{
+		$llemma = "be";
+		$p = "VBDZ";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Keep" || $w eq "'keep") && ($p eq "NN1" || $p eq "VVI"|| $p eq "VV0" ) )
+	{
+		$llemma = "keep";
+		$p = "VV0";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'By" || $w eq "'by") && ($p eq "NN1" ) )
+	{
+		$llemma = "by";
+		$p = "II";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'eem") && ($p eq "NN1" ) )
+	{
+		$llemma = "him";
+		$p = "PPH01";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Ed" || $w eq "'ed") && ($p eq "NN1" || $p eq "VVD"|| $p eq "JJ" ) )
+	{
+		$llemma = "head";
+		$p = "NN1";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Am") && ($p eq "NN1" ) )
+	{
+		$llemma = "be";
+		$p = "VBM";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'am") && ($p eq "NN1" ) )
+	{
+		$llemma = "ham";
+		$p = "NN1";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Ha" || $w eq "'ha") && ($p eq "NN1" ) )
+	{
+		$llemma = "ha";
+		$p = "UH";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "ol'") && ($p eq "NN1" || $p eq "VV0") )
+	{
+		$llemma = "old";
+		$p = "JJ";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "gon'") && ($p eq "NN1" || $p eq "VV0") )
+	{
+		$llemma = "go";
+		$p = "VVN";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "roun'") && ($p eq "NN1" || $p eq "VV0" || $p eq "JJ") )
+	{
+		$llemma = "around";
+		$p = "RR";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Mermaid") && ($p eq "NN1" ) )
+	{
+		$llemma = "mermaid";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Her" || $w eq "'her") && ($p eq "NN1" || $p eq "JJR" || $p eq "VV0" ) )
+	{
+		$llemma = "her";
+		$p = "PPHO1";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Nothing" || $w eq "'nothing") && ($p eq "NN1" || $p eq "VVG") )
+	{
+		$llemma = "nothing";
+		$p = "PN1";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Too" || $w eq "'too") && ($p eq "NN1") )
+	{
+		$llemma = "too";
+		$p = "RG";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Home" || $w eq "'home") && ($p eq "NN1") )
+	{
+		$llemma = "home";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Love" || $w eq "'love") && ($p eq "NN1" || $p eq "VV0" ) )
+	{
+		$llemma = "love";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Man" || $w eq "'man") && ($p eq "NN1") )
+	{
+		$llemma = "man";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Morning" || $w eq "'morning") && ($p eq "NN1" || $p eq "VVG" || $p eq "JJ" ) )
+	{
+		$llemma = "morning";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Bye" || $w eq "'bye") && ($p eq "NN1" || $p eq "VV0") )
+	{
+		$llemma = "bye";
+		$p = "UH";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'From" || $w eq "'from") && ($p eq "NN1" || $p eq "VV0" || $p eq "VVI") )
+	{
+		$llemma = "from";
+		$p = "II";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Give" || $w eq "'give") && ($p eq "NN1" || $p eq "VV0" || $p eq "VVI") )
+	{
+		$llemma = "give";
+		$p = "VV0";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Tell" || $w eq "'tell") && ($p eq "NN1" || $p eq "VV0" || $p eq "VVI") )
+	{
+		$llemma = "tell";
+		$p = "VV0";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'His" || $w eq "'his") && ($p eq "NN1") )
+	{
+		$llemma = "his";
+		$p = "APPGE";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Take" || $w eq "'take") && ($p eq "VV0" || $p eq "VVI") )
+	{
+		$llemma = "take";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Three" || $w eq "'three") && ($p eq "NN1") )
+	{
+		$llemma = "three";
+		$p = "MC";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Young" || $w eq "'young") && ($p eq "VVN" || $p eq "VVD" || $p eq "JJ") )
+	{
+		$llemma = "young";
+		$p = "JJ";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Did" || $w eq "'did") && ($p eq "NN1" || $p eq "JJ") )
+	{
+		$llemma = "do";
+		$p = "VDD";
+		$problem_fixed = 1;
+	}
+	elsif (($w eq "'Going" || $w eq "'going") && ($p eq "VVG" || $p eq "NN1" || $p eq "JJ") )
+	{
+		$llemma = "go";
+		$p = "VVG";
 		$problem_fixed = 1;
 	}
 
@@ -816,16 +1126,22 @@ sub fill_RESTing()
 {
 	%RESTing = (
 		"'aving" => "have",
+		"n'" => "and",
 		"damn'" => "damn",
 		"dam'" => "damn",
+		"fa'" => "fall",
+		"giv'" => "give",
 		"'em" => "them",
 		"'flu" => "flu",
 		"worl'" => "world",
 		"tho'" => "though",
 		"'usband" => "husband",
+		"'abits" => "habit",
+		"'abit" => "habit",
 		"'ooman" => "woman",
 		"ceilin'" => "ceiling",
 		"'andle" => "handle",
+		"'most" => "almost",
 		"'ome" => "home",
 		"'ouse" => "house",
 		"'ead" => "head",
@@ -905,6 +1221,7 @@ sub fill_RESTing()
 		"'ank" => "hank",
 		"'ears" => "hear",
 		"'urt" => "hurt",
+		"'urts" => "hurt",
 		"considerin'" => "consider",
 		"'earty" => "hearty",
 		"'enderson" => "henderson",
@@ -921,6 +1238,7 @@ sub fill_RESTing()
 		"anythin'" => "anything",
 		"arguin'" => "argue",
 		"askin'" => "ask",
+		"axin'" => "ask",
 		"avin'" => "have",
 		"beggin'" => "beg",
 		"beginnin'" => "begin",
@@ -1018,6 +1336,10 @@ sub fill_RESTing()
 		"playin'" => "play",
 		"pokin'" => "poke",
 		"pretendin'" => "pretend",
+		"prayin'" => "pray",
+		"pinchin'" => "pinch",
+		"'opping" => "hop",
+		"ironin'" => "iron",
 		"pullin'" => "pull",
 		"puttin'" => "put",
 		"readin'" => "read",
@@ -1041,6 +1363,8 @@ sub fill_RESTing()
 		"somethin'" => "something",
 		"speakin'" => "speak",
 		"spendin'" => "spend",
+		"spoilin'" => "spoil",
+		"scrappin'" => "scrap",
 		"starin'" => "stare",
 		"startin'" => "start",
 		"starvin'" => "starve",
@@ -1171,6 +1495,10 @@ sub fill_RESTing()
 		"rovin'" => "rove",
 		"poppin'" => "pop",
 		"wan'" => "want",
+		"a-goin'" => "go",
+		"agoin'" => "go",
+		"collectin'" => "collect",
+		"frettin'" => "fret",
 		"writin'" => "write");
 
 }
@@ -1180,12 +1508,17 @@ sub fillJing()
 
     %Jing = (
 		"amazin'" => "amazing",
+		"comfortin'" => "comforting",
+		"'uman" => "human",
 		"goo'" => "good",
 		"sma'" => "small",
+		"darlin'" => "darling",
 		"damn'" => "damned",
 		"dam'" => "damned",
 		"awfu'" => "awful",
+		"fu'" => "full",
 		"'ot" => "hot",
+		"li'l'" => "little",
 		"'appy" => "happy",
 		"'earty" => "hearty",
 		"'oly" => "holy",
@@ -1194,8 +1527,8 @@ sub fillJing()
 		"'andy" => "handy",
 		"'ard" => "hard",
 		"'urt" => "hurt",
+		"'igh" => "high",
 		"ol'" => "old",
-		"'ot" => "hot",
 		"'fraid" => "afraid",
 		"awfu'" => "awful",
 		"'normous" => "enormous",
@@ -1340,6 +1673,7 @@ sub fillJing()
 		"amusin'" => "amusing",
 		"'andsome" => "handsome",
 		"'appier" => "happy",
+		"'ungry" => "hungry",
 		"writin'" => "writing");
 }
 
@@ -1364,6 +1698,7 @@ sub fillAPOSlist()
 		"'that" => "DD1",
 		"'at" => "II",
 		"'in" => "II",
+		"'for" => "CS",
 		"'he" => "PPHS1",
 		"'she" => "PPHS1",
 		"'we" => "PPHS2",
@@ -1383,7 +1718,73 @@ sub fillAPOSlist()
 		"'miss" => "NNB",
 		"'of" => "RR21",
 		"'an" => "AT1",
+		"'have" => "VH0",
+		"'because" => "CS",
+		"'dirty" => "JJ",
+		"'nice" => "JJ",
+		"'never" => "RR",
+		"'out" => "RP",
+		"'something" => "PN1",
+		"'those" => "DD2",
+		"'great" => "JJ",
+		"'green" => "JJ",
+		"'hello" => "UH",
+		"'jane" => "NP1",
+		"'la" => "FU",
 		"'no" => "AT");
+}
+
+
+sub fillsecondAPOSlist()
+{
+
+    %secondAPOSlist = (
+		"for" => "unknown",
+		"one" => "unknown",
+		"sir" => "unknown",
+		"thank" => "unknown",
+		"dear" => "unknown",
+		"go" => "unknown",
+		"now" => "unknown",
+		"so" => "unknown",
+		"who" => "unknown",
+		"here" => "unknown",
+		"just" => "unknown",
+		"let" => "unknown",
+		"little" => "unknown",
+		"on" => "unknown",
+		"where" => "unknown",
+		"very" => "unknown",
+		"poor" => "unknown",
+		"ah" => "unknown",
+		"god" => "unknown",
+		"when" => "unknown",
+		"with" => "unknown",
+		"be" => "unknown",
+		"get" => "unknown",
+		"please" => "unknown",
+		"then" => "unknown",
+		"keep" => "unknown",
+		"bye" => "unknown",
+		"by" => "unknown",
+		"mermaid" => "unknown",
+		"her" => "unknown",
+		"nothing" => "unknown",
+		"too" => "unknown",
+		"home" => "unknown",
+		"love" => "unknown",
+		"man" => "unknown",
+		"morning" => "unknown",
+		"from" => "unknown",
+		"give" => "unknown",
+		"tell" => "unknown",
+		"his" => "unknown",
+		"take" => "unknown",
+		"three" => "unknown",
+		"young" => "unknown",
+		"do" => "unknown",
+		"go" => "unknown",
+		"come" => "unknown");
 }
 
 sub get_long_words
