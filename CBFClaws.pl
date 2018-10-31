@@ -960,6 +960,7 @@ sub lemmatize
         'VHZ' => 'have');
 
 	my $stillnotfound = 0;
+
 	if ($w eq "ai" && $p eq "FU")
 	{
 		$stillnotfound++;
@@ -971,7 +972,11 @@ sub lemmatize
 		$stillnotfound++;
 		$lemma = 'can';
 	}
-
+	elsif ($w eq "wo" && $p eq "VM")
+	{
+		$stillnotfound++;
+		$lemma = 'will';
+	}
 	elsif ($w eq "'ll" && $p eq "VM")
 	{
 		$stillnotfound++;
@@ -1126,6 +1131,7 @@ sub fill_RESTing()
 {
 	%RESTing = (
 		"'aving" => "have",
+		"n't" => "not",
 		"n'" => "and",
 		"damn'" => "damn",
 		"dam'" => "damn",
