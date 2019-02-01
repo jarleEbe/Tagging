@@ -12,11 +12,11 @@ open(INN, "$inputfile");
 binmode INN, ":utf8";
 my @tempcontent = <INN>;
 close(INN);
-open(LOG, ">phrase_length.txt");
+open(LOG, ">phrase_length3.txt");
 binmode LOG, ":utf8";
 my @phrases = ();
-my $numphrases = 0;
 my %temphash = ();
+my $numberofphrases = 0;
 foreach (@tempcontent)
 {
 	chomp;
@@ -24,7 +24,7 @@ foreach (@tempcontent)
 	s/\r//;
 	s/([a-z]+)'s/$1 's/g;
 	s/([a-z]+)'ll/$1 will/g;
-	s/([a-z]+)n't/$1 n't/g;
+	s/([a-z]+)n't/$1 not/g;
 	s/([a-z]+)'ve/$1 have/g;
 	s/([a-z]+)'m/$1 be/g;
 	s/([a-z]+)'re/$1 be/g;
@@ -36,38 +36,76 @@ foreach (@tempcontent)
 	s/s'/s '/g;
 
 	my @row = split/ /;
-	if ($#row >= 3) #&& $#row < 4) #2 = three items/words
+	my $ngram = 0;
+	foreach (@row)
+	{
+		if (/[a-zA-Z0-9']/)
+		{
+			$ngram++;
+		}
+	}
+#	if ($#row >= 5) #&& $#row < 4) #2 = three items/words
+	if ($ngram == 3 && $_ !~ /^#/)
 	{
 		s/^X /\([^ ]+\) /;
 		s/ X$/ \(.+\)/;
 		s/ X / \([^ ]+\) /g;
 		s/Z/\([a-z]+\)/g;
 		if (exists($temphash{$_}))
-		{
-
+		{	
 		}
 		else
 		{
 			push(@phrases, $_);
-			print LOG "$_\n";
-			$numphrases++;
+			$temphash{$_} = "null";
+			$numberofphrases++;
+			if (/X's/)
+			{
+				$numberofphrases--;
+			}
 		}
 		if (/X's/)
 		{
-			s/X's/X/g;
-			if (exists($temphash{$_}))
+			my $tempX = $_;
+			$tempX =~ s/X's/\([^ ]+\) 's/g;
+			if (exists($temphash{$tempX}))
 			{
 			}
 			else
 			{
-				push(@phrases, $_);
-				print LOG "$_\n";
-				$numphrases++;
+				push(@phrases, $tempX);
+				$temphash{$tempX} = "null";
+				$numberofphrases++;
+			}
+			$tempX = $_;
+			$tempX =~ s/X's/\([^ ]+\)/g;
+			if (exists($temphash{$tempX}))
+			{
+			}
+			else
+			{
+				push(@phrases, $tempX);
+				$temphash{$tempX} = "null";
 			}
 		}
 	}
 }
-print LOG "Number of phrases: $numphrases\n";
+my @tempphrases = @phrases;
+@phrases = ();
+foreach (@tempphrases)
+{
+	if (/X/)
+	{
+
+	}
+	else
+	{
+		push(@phrases, $_);
+		print LOG "$_\n";
+	}
+}
+print LOG "Number of phrases by rows in array: ($#phrases + 1)\n";
+print LOG "Number of phrases by counting (collapsing X's & X): $numberofphrases\n";
 close(LOG);
 #exit;
 
@@ -89,9 +127,11 @@ foreach (@tempcontent)
 opendir(DS, $basePath) or die $!;
 my $numFiles = 0;
 my $numhits = 0;
-my $outputfile = "all_hits_phrases.txt";
+my $outputfile = "all_hits_phrases3.txt";
 open(OUT, ">$outputfile");
 binmode OUT, ":utf8";
+open(NOHITS, ">no_hits_phrases3.txt");
+binmode NOHITS, ":utf8";
 while (my $txt = readdir(DS))
 {
 	if ($txt =~ /\.txt$/i)
@@ -128,23 +168,17 @@ while (my $txt = readdir(DS))
 			}
 			elsif ($clause ne '' && $clause ne ' ')
 			{
-#				if ($clause =~ / my / || $clause =~ / your / ||$clause =~ / their / ||$clause =~ / his / ||$clause =~ / her / ||$clause =~ / its / )
-#				{
-#					$clause =~ s/ my / one 's /g;
-#					$clause =~ s/ your / one 's /g;
-#					$clause =~ s/ their / one 's /g;
-#					$clause =~ s/ his / one 's /g;
-#					$clause =~ s/ her / one 's /g;
-#					$clause =~ s/ its / one 's /g;
-#				}
 				foreach my $phrase (@phrases)
 				{
-					if ($clause =~ /$phrase/i)
+#					if ($clause =~ /$phrase /i) #Introducing blanks around phrase to make sure no hits are due to truncated forms
+					while ($clause =~ / $phrase /i || $clause =~ /^$phrase /i) 
 					{
 						my $metadata = $texthash{$txt};
 						print OUT "$phrase\t$origClause\t$metadata\n";
 						$numhits++;
-						last;
+						$clause =~ s/$phrase/<FOUNDHERE>/i;
+						$temphash{$phrase} = "notnull";
+#						last;
 					}
 				}
 				$clause = ' ';
@@ -155,6 +189,14 @@ while (my $txt = readdir(DS))
 }
 close(OUT);
 close(DS);
+foreach my $key (sort(keys(%temphash)))
+{
+	if ($temphash{$key} eq 'null')
+	{
+		print NOHITS "$key\n";
+	}
+}
+close(NOHITS);
 print "Number of files: $numFiles\n";
 print "Number of hits: $numhits\n";
 exit;

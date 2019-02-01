@@ -72,7 +72,16 @@ while (my $txt = readdir(DS))
 			$line =~ s/\s+/ /g;
 
 			$line = &insertQM($line);
-			my $temp = &check_wlength($line);
+			my $wlen = &check_wlength($line);
+			if ($wlen > 24)
+			{
+				if ($line =~ /([A-Za-z"]+)([.,;:]{1,1})\"([A-Za-z]+)/)
+				{
+					print "$line -> ";
+					$line =~ s/([.,;:]{1,1})\"/$1 "/g;
+					print "$line\n";
+				}
+			}
         	print OUT "$line ";
 		}
 		print OUT "\n</text>";
@@ -186,15 +195,15 @@ sub insertQM
 
 	$thetext =~ s/^'/"/;
 	
-	$thetext =~ s/(\.|\?|\!) '/$1"/g;
+	$thetext =~ s/(\.|\?|\!) '/$1 "/g;
 	$thetext =~ s/(\.|\?|\!)'/$1"/g;
 
 	$thetext =~ s/'(\.|\?|\!)/"$1/g;
-	$thetext =~ s/' (\.|\?|\!)/"$1/g;
+	$thetext =~ s/' (\.|\?|\!)/" $1/g;
 
 	$thetext =~ s/(\,|\;|\:)'/$1"/g;
+	$thetext =~ s/(\,|\;|\:|\() '/$1 "/g;
 
-	$thetext =~ s/(\,|\;|\:|\() '/$1"/g;
 	$thetext =~ s/'(\,|\;|\:|\))/"$1/g;
 
 	$thetext =~ s/&mdash; '/&mdash; "/g;
@@ -210,11 +219,14 @@ sub check_wlength
 	my $line = shift(@_);
 
 	my @words = split/ /, $line;
+	my $wordlength = 0;
 	foreach my $word (@words)
 	{
 		if (length($word) > 24)
 		{
 			print "Too long word: $word\n";
+			$wordlength = length($word);
 		}
 	}
+	return $wordlength;
 }

@@ -90,38 +90,34 @@ def parse_bnc_header(xmltext):
     sex = ''
     dateofBirth = ''
     decade = ''
+    genre = ''
 
     if "idno" in myJSON:
-        idNo = jsonXML["TEI"]["teiHeader"][
-            "fileDesc"]["publicationStmt"]["idno"]
+        idNo = jsonXML["TEI"]["teiHeader"]["fileDesc"]["publicationStmt"]["idno"]
 
     if "author" in myJSON:
-        author = jsonXML["TEI"]["teiHeader"]["fileDesc"][
-            "sourceDesc"]["biblStruct"]["monogr"]["author"]
+        author = jsonXML["TEI"]["teiHeader"]["fileDesc"]["sourceDesc"]["biblStruct"]["monogr"]["author"]
 
     if "monogr" in myJSON:
-        title = jsonXML["TEI"]["teiHeader"]["fileDesc"][
-            "sourceDesc"]["biblStruct"]["monogr"]["title"]
+        title = jsonXML["TEI"]["teiHeader"]["fileDesc"]["sourceDesc"]["biblStruct"]["monogr"]["title"]
 
     if "pubPlace" in myJSON:
-        publicationPlace = jsonXML["TEI"]["teiHeader"]["fileDesc"][
-            "sourceDesc"]["biblStruct"]["monogr"]["imprint"]["pubPlace"]
+        publicationPlace = jsonXML["TEI"]["teiHeader"]["fileDesc"]["sourceDesc"]["biblStruct"]["monogr"]["imprint"]["pubPlace"]
 
     if "publisher" in myJSON:
-        publisher = jsonXML["TEI"]["teiHeader"]["fileDesc"][
-            "sourceDesc"]["biblStruct"]["monogr"]["imprint"]["publisher"]
+        publisher = jsonXML["TEI"]["teiHeader"]["fileDesc"]["sourceDesc"]["biblStruct"]["monogr"]["imprint"]["publisher"]
 
     if "imprint" in myJSON:
-        dateofPublication = jsonXML["TEI"]["teiHeader"]["fileDesc"][
-            "sourceDesc"]["biblStruct"]["monogr"]["imprint"]["date"]["#text"]
+        dateofPublication = jsonXML["TEI"]["teiHeader"]["fileDesc"]["sourceDesc"]["biblStruct"]["monogr"]["imprint"]["date"]["#text"]
 
     if "sex" in myJSON:
-        sex = jsonXML["TEI"]["teiHeader"][
-            "profileDesc"]["particDesc"]["person"]["sex"]
+        sex = jsonXML["TEI"]["teiHeader"]["profileDesc"]["particDesc"]["person"]["sex"]
 
     if "birth" in myJSON:
-        dateofBirth = jsonXML["TEI"]["teiHeader"]["profileDesc"][
-            "particDesc"]["person"]["birth"]["date"]["#text"]
+        dateofBirth = jsonXML["TEI"]["teiHeader"]["profileDesc"]["particDesc"]["person"]["birth"]["date"]["#text"]
+
+    if "factuality" in myJSON:
+        genre = jsonXML["TEI"]["teiHeader"]["profileDesc"]["textDesc"]["factuality"]["#text"]
 
     sex = sex.strip()
     if sex != 'male' and sex != 'female':
@@ -135,6 +131,7 @@ def parse_bnc_header(xmltext):
     myLocalDict['title'] = title
     myLocalDict['pubDate'] = dateofPublication
     myLocalDict['sex'] = sex
+    myLocalDict['genre'] = genre
     myLocalDict['birthDate'] = dateofBirth
 
     decade = find_decade(dateofPublication)
@@ -159,6 +156,7 @@ def add_xml_text(taggeddir, text, headerdir, outdir):
     textid = sunitDict['textId']
     decade = sunitDict['decade']
     sex = sunitDict['sex']
+    genre = sunitDict['genre']
 
     # Generate output file (new_file)
     outfile = text
@@ -168,7 +166,7 @@ def add_xml_text(taggeddir, text, headerdir, outdir):
 
 #    new_file.write('<?xml version="1.0" encoding="UTF-8"?>')
 #    new_file.write("\n")
-    novel = '<text id="' + textid + '" gender="' + sex + '" decade="' + decade + '">'
+    novel = '<text id="' + textid + '" gender="' + sex + '" genre="' + genre + '" decade="' + decade + '">'
     new_file.write(novel)
     new_file.write("\n")
 
